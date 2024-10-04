@@ -1,7 +1,8 @@
 @./timer.py
 
-allow to edit positions
-persisted to the session file, not the config file
-
-'p1e' -> position 1 edit
-'p3d' -> position 3 delete
+python3 timer.py
+Traceback (most recent call last):
+  File "/Users/nitsanavni/code/timer/timer.py", line 68, in <module>
+    positions = session['positions']
+                ~~~~~~~^^^^^^^^^^^^^
+KeyError: 'positions'

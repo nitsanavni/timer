@@ -57,18 +57,20 @@ live_view = config_data['live_view']
 session_file_path = f"session_{datetime.now().strftime('%Y_%m_%d')}.yml"
 if os.path.exists(session_file_path):
     with open(session_file_path, 'r') as file:
-        session_data = yaml.safe_load(file).get('session', session)
-        participants = session_data['participants']
-        positions = session_data['positions']
-        state = session_data['state']
-        time_elapsed = session_data['time_elapsed']
-        turn_duration = session_data['turn_duration']
+        session_data = yaml.safe_load(file).get('session', {})
+        participants = session_data.get(
+            'participants', session['participants'])
+        positions = session_data.get('positions', session['positions'])
+        state = session_data.get('state', session['state'])
+        time_elapsed = session_data.get(
+            'time_elapsed', session['time_elapsed'])
+        turn_duration = session_data.get(
+            'turn_duration', session['turn_duration'])
 else:
     participants = session['participants']
     positions = session['positions']
-    turn_duration = session.get(
-        'turn_duration', config['default_turn_duration'])
-    state = session.get('state', 'stopped')
+    turn_duration = session['turn_duration']
+    state = session['state']
     time_elapsed = session.get('time_elapsed', 0)
 
 timer_paused = False
