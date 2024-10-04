@@ -101,7 +101,9 @@ def update_timer():
 
 def rotate_participants():
     global participants
-    participants = participants[1:] + [participants[0]]
+    if participants:
+        first_participant = participants.pop(0)
+        participants.append(first_participant)
     save_session()
 
 
