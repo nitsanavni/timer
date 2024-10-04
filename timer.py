@@ -74,29 +74,22 @@ def run_hook(hook_name):
 
 
 def update_timer():
-    global time_elapsed, timer_paused, participants
+    global time_elapsed, timer_paused
     while state == 'active':
         time.sleep(1)
         with lock:
             if not timer_paused:
                 time_elapsed += 1
-                if participants:
-                    current_participant = participants[0]
-                    current_participant['time_remaining'] -= 1
-                    run_hook('timer_update')
-                    if current_participant['time_remaining'] <= 0:
-                        run_hook('timer_expire')
-                        rotate_participants()
-                        time_elapsed = 0
+                if time_elapsed >= turn_duration and participants:
+                    run_hook('timer_expire')
+                    rotate_participants()
+                    time_elapsed = 0
                 save_session()
 
 
 def rotate_participants():
     global participants
     participants = participants[1:] + [participants[0]]
-    assign_positions()
-    if participants:
-        participants[0]['time_remaining'] = turn_duration
     save_session()
 
 
@@ -126,8 +119,9 @@ def start_timer():
 
 
 def stop_timer():
-    global state
+    global state, time_elapsed
     state = 'stopped'
+    time_elapsed = 0  # Reset the timer when stopped
     save_session()
 
 
@@ -140,8 +134,7 @@ def pause_timer():
 def add_person(name):
     participants.append({
         'name': name,
-        'position': None,
-        'time_remaining': turn_duration
+        'position': None
     })
     assign_positions()
     save_session()
@@ -157,8 +150,6 @@ def remove_person(name):
 def edit_turn_length(length):
     global turn_duration
     turn_duration = length
-    for participant in participants:
-        participant['time_remaining'] = length
     save_session()
 
 
@@ -198,10 +189,7 @@ def draw_screen(stdscr):
             participant = next(
                 (p for p in participants if p.get('position') == position), None)
             if participant:
-                time_remaining = participant.get(
-                    'time_remaining', turn_duration)
                 stdscr.addstr(row + 1, col, f"  {participant['name']}")
-                stdscr.addstr(row + 2, col, f"  Time Left: {time_remaining}s")
             else:
                 stdscr.addstr(row + 1, col, "  (None)")
         unassigned = [p for p in participants if p.get('position') is None]
@@ -211,8 +199,9 @@ def draw_screen(stdscr):
                 stdscr.addstr(row + 5 + idx, 0, f"  {participant['name']}")
         stdscr.addstr(row + 7, 0, f"State: {state}")
         stdscr.addstr(row + 8, 0, f"Time Elapsed: {time_elapsed}s")
+        stdscr.addstr(row + 9, 0, f"Turn Duration: {turn_duration}s")
         stdscr.addstr(
-            row + 10, 0, "Press 'q' to quit, 'a' to add participant.")
+            row + 11, 0, "Press 'q' to quit, 'a' to add participant.")
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 

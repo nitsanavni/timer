@@ -1,9 +1,5 @@
 @./timer.py
-@./config.yml
 
-just mofify timer.py
-
-add ability to add participants
-e.g.:
-hit 'a' -> show an input field to enter a name
+1. stop also means reset timer
+2. time elpsed and time left are session-level state, not per participant
 
