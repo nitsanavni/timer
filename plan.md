@@ -1,0 +1,7 @@
+- in position/participant edit mode, show the name next to number, don't show 'q'
+- cant see the input field
+- graphical design, colors
+- break to multiple files
+- err when starting with session file
+- take session file from cli arg
+- also config file
