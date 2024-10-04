@@ -85,7 +85,9 @@ keymaps = config.get('keymaps', {})
 # Lock for thread safety
 lock = threading.Lock()
 position_edit_mode = False
+participants_edit_mode = False
 selected_position_index = -1
+selected_participant_index = -1
 
 
 def run_hook(hook_name):
@@ -125,7 +127,7 @@ def start_timer():
     global state, timer_thread, timer_paused
     if state != 'active':
         state = 'active'
-        timer_paused = False  # Ensure the timer is not paused
+        timer_paused = False
         if not timer_thread or not timer_thread.is_alive():
             timer_thread = threading.Thread(target=update_timer)
             timer_thread.daemon = True
@@ -136,7 +138,7 @@ def start_timer():
 def stop_timer():
     global state, time_elapsed
     state = 'stopped'
-    time_elapsed = 0  # Reset the timer when stopped
+    time_elapsed = 0
     save_session()
 
 
@@ -154,6 +156,13 @@ def add_person(name):
 def remove_person(name):
     global participants
     participants = [p for p in participants if p != name]
+    save_session()
+
+
+def edit_person(index, new_name):
+    global participants
+    if 0 <= index < len(participants):
+        participants[index] = new_name
     save_session()
 
 
@@ -184,12 +193,17 @@ def add_position(name):
 
 
 def handle_input(key, stdscr):
-    global position_edit_mode, selected_position_index
+    global position_edit_mode, participants_edit_mode, selected_position_index, selected_participant_index
 
     if key == ord('p'):
         position_edit_mode = not position_edit_mode
+        participants_edit_mode = False
 
-    if not position_edit_mode:
+    if key == ord('m'):
+        participants_edit_mode = not participants_edit_mode
+        position_edit_mode = False
+
+    if not position_edit_mode and not participants_edit_mode:
         if key == ord(actions.get('rotate', 'r')):
             stop_timer()
             rotate_participants()
@@ -219,7 +233,7 @@ def handle_input(key, stdscr):
             stop_timer()
             curses.endwin()
             sys.exit()
-    else:
+    elif position_edit_mode:
         if key >= ord('1') and key <= ord('9'):
             selected_position_index = key - ord('1')
         elif key == ord('a'):
@@ -239,6 +253,26 @@ def handle_input(key, stdscr):
             edit_position(selected_position_index, new_name)
         elif key == ord('d') and selected_position_index != -1:
             delete_position(selected_position_index)
+    elif participants_edit_mode:
+        if key >= ord('1') and key <= ord('9'):
+            selected_participant_index = key - ord('1')
+        elif key == ord('a'):
+            stdscr.addstr(15, 0, "Enter new participant name: ")
+            textwin = curses.newwin(1, 20, 15, 28)
+            textpad_obj = textpad.Textbox(textwin)
+            stdscr.refresh()
+            new_name = textpad_obj.edit().strip()
+            add_person(new_name)
+        elif key == ord('e') and selected_participant_index != -1:
+            stdscr.addstr(
+                16, 0, f"Enter new name for participant {selected_participant_index + 1}: ")
+            textwin = curses.newwin(1, 20, 16, 42)
+            textpad_obj = textpad.Textbox(textwin)
+            stdscr.refresh()
+            new_name = textpad_obj.edit().strip()
+            edit_person(selected_participant_index, new_name)
+        elif key == ord('d') and selected_participant_index != -1:
+            remove_person(participants[selected_participant_index])
 
 
 def draw_screen(stdscr):
@@ -268,13 +302,18 @@ def draw_screen(stdscr):
         stdscr.addstr(len(positions) + 12, 0,
                       "Press 'q' to quit, 'a' to add participant, 'd' to edit duration")
         stdscr.addstr(len(positions) + 13, 0,
-                      "Press 'p' to toggle position edit mode")
+                      "Press 'p' to toggle position edit mode, 'm' to toggle participant edit mode")
+
         if position_edit_mode:
             stdscr.addstr(len(positions) + 14, 0, "Position Edit Mode: On")
             stdscr.addstr(len(positions) + 15, 0,
                           "Use '1', '2', ... to select, 'a' to add, 'e' to edit, 'd' to delete")
-        else:
-            stdscr.addstr(len(positions) + 14, 0, "Position Edit Mode: Off")
+
+        if participants_edit_mode:
+            stdscr.addstr(len(positions) + 14, 0, "Participant Edit Mode: On")
+            stdscr.addstr(len(positions) + 15, 0,
+                          "Use '1', '2', ... to select, 'a' to add, 'e' to edit, 'd' to delete")
+
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 
