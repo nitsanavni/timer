@@ -107,18 +107,9 @@ def rotate_participants():
     save_session()
 
 
-def assign_positions():
-    for idx, participant in enumerate(participants):
-        if idx < len(positions):
-            participant['position'] = positions[idx]
-        else:
-            participant['position'] = None
-
-
 def randomize_participants():
     global participants
     random.shuffle(participants)
-    assign_positions()
     save_session()
 
 
@@ -146,18 +137,13 @@ def pause_timer():
 
 
 def add_person(name):
-    participants.append({
-        'name': name,
-        'position': None
-    })
-    assign_positions()
+    participants.append(name)
     save_session()
 
 
 def remove_person(name):
     global participants
-    participants = [p for p in participants if p['name'] != name]
-    assign_positions()
+    participants = [p for p in participants if p != name]
     save_session()
 
 
@@ -205,21 +191,21 @@ def draw_screen(stdscr):
         stdscr.addstr(0, 0, "Positions and Participants:")
         row = 2
         max_col_width = 20
+        # Draw positions and assign participants
         for idx, position in enumerate(positions):
             col = idx * max_col_width
             stdscr.addstr(row, col, f"{position}:")
-            participant = next(
-                (p for p in participants if p.get('position') == position), None)
-            if participant:
-                stdscr.addstr(row + 1, col, f"  {participant['name']}")
-            else:
-                stdscr.addstr(row + 1, col, "  (None)")
-        unassigned = [p for p in participants if p.get('position') is None]
+            participant_name = participants[idx] if idx < len(
+                participants) else "(None)"
+            stdscr.addstr(row + 1, col, f"  {participant_name}")
+
+        # Draw unassigned participants
+        unassigned = participants[len(positions):]
         if unassigned:
             stdscr.addstr(len(positions) + 4, 0, "Unassigned Participants:")
-            for idx, participant in enumerate(unassigned):
+            for idx, participant_name in enumerate(unassigned):
                 stdscr.addstr(len(positions) + 5 + idx, 0,
-                              f"  {participant['name']}")
+                              f"  {participant_name}")
         stdscr.addstr(len(positions) + 7, 0, f"State: {state}")
         stdscr.addstr(len(positions) + 8, 0, f"Time Elapsed: {time_elapsed}s")
         stdscr.addstr(len(positions) + 9, 0,
@@ -247,7 +233,6 @@ def save_session():
 def main(stdscr):
     curses.curs_set(0)
     stdscr.nodelay(True)
-    assign_positions()
     threading.Thread(target=draw_screen, args=(stdscr,), daemon=True).start()
     while True:
         key = stdscr.getch()

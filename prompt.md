@@ -1,5 +1,6 @@
 @./timer.py
 @./specs.md
+@./session_2024_10_04.yml
 
-fix timer.py according to specs.md
-
+positions should not be fields on participants
+participants roate, but positions are defined separately, in a separate list
