@@ -6,7 +6,7 @@ import random
 import os
 import sys
 from datetime import datetime
-from curses import wrapper
+from curses import wrapper, textpad
 
 # Default configuration
 default_config = {
@@ -18,7 +18,8 @@ default_config = {
             'randomize': 'x',
             'start': 's',
             'stop': 't',
-            'pause': 'p'
+            'pause': 'p',
+            'add': 'a'
         },
         'keymaps': {},
         'hooks': {},
@@ -79,23 +80,21 @@ def update_timer():
         with lock:
             if not timer_paused:
                 time_elapsed += 1
-                current_participant = participants[0]
-                current_participant['time_remaining'] -= 1
-                run_hook('timer_update')
-                if current_participant['time_remaining'] <= 0:
-                    run_hook('timer_expire')
-                    rotate_participants()
-                    time_elapsed = 0
+                if participants:
+                    current_participant = participants[0]
+                    current_participant['time_remaining'] -= 1
+                    run_hook('timer_update')
+                    if current_participant['time_remaining'] <= 0:
+                        run_hook('timer_expire')
+                        rotate_participants()
+                        time_elapsed = 0
                 save_session()
 
 
 def rotate_participants():
     global participants
-    # Rotate participants list
     participants = participants[1:] + [participants[0]]
-    # Assign positions
     assign_positions()
-    # Reset time_remaining for the participant in the first position
     if participants:
         participants[0]['time_remaining'] = turn_duration
     save_session()
@@ -163,7 +162,7 @@ def edit_turn_length(length):
     save_session()
 
 
-def handle_input(key):
+def handle_input(key, stdscr):
     if key == ord(actions.get('rotate', 'r')):
         rotate_participants()
     elif key == ord(actions.get('randomize', 'x')):
@@ -174,11 +173,17 @@ def handle_input(key):
         stop_timer()
     elif key == ord(actions.get('pause', 'p')):
         pause_timer()
+    elif key == ord(actions.get('add', 'a')):
+        stdscr.addstr(12, 0, "Enter name: ")
+        textwin = curses.newwin(1, 20, 12, 12)
+        textpad_obj = textpad.Textbox(textwin)
+        stdscr.refresh()
+        name = textpad_obj.edit().strip()
+        add_person(name)
     elif key == ord('q'):
         stop_timer()
         curses.endwin()
         sys.exit()
-    # Add more key handling as needed
 
 
 def draw_screen(stdscr):
@@ -186,7 +191,7 @@ def draw_screen(stdscr):
         stdscr.clear()
         stdscr.addstr(0, 0, "Positions and Participants:")
         row = 2
-        max_col_width = 20  # Adjust as needed for spacing
+        max_col_width = 20
         for idx, position in enumerate(positions):
             col = idx * max_col_width
             stdscr.addstr(row, col, f"{position}:")
@@ -206,7 +211,8 @@ def draw_screen(stdscr):
                 stdscr.addstr(row + 5 + idx, 0, f"  {participant['name']}")
         stdscr.addstr(row + 7, 0, f"State: {state}")
         stdscr.addstr(row + 8, 0, f"Time Elapsed: {time_elapsed}s")
-        stdscr.addstr(row + 10, 0, "Press 'q' to quit.")
+        stdscr.addstr(
+            row + 10, 0, "Press 'q' to quit, 'a' to add participant.")
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 
@@ -231,7 +237,7 @@ def main(stdscr):
     while True:
         key = stdscr.getch()
         if key != -1:
-            handle_input(key)
+            handle_input(key, stdscr)
         time.sleep(0.1)
 
 

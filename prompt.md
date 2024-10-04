@@ -1,5 +1,9 @@
 @./timer.py
+@./config.yml
 
-FileNotFoundError: [Errno 2] No such file or directory: 'config.yml'
+just mofify timer.py
 
-if it doesn;t exist, create it with some defaults
+add ability to add participants
+e.g.:
+hit 'a' -> show an input field to enter a name
+
