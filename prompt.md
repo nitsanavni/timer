@@ -1,6 +1,7 @@
 @./timer.py
-@./specs.md
-@./session_2024_10_04.yml
 
-positions should not be fields on participants
-participants roate, but positions are defined separately, in a separate list
+allow to edit positions
+persisted to the session file, not the config file
+
+'p1e' -> position 1 edit
+'p3d' -> position 3 delete

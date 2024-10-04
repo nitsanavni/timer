@@ -20,13 +20,16 @@ default_config = {
             'stop': 't',
             'pause': 'p',
             'add': 'a',
-            'edit_duration': 'd'
+            'edit_duration': 'd',
+            'edit_position': 'e',
+            'delete_position': 'd'
         },
         'keymaps': {},
         'hooks': {},
     },
     'session': {
         'participants': [],
+        'positions': ['Position 1', 'Position 2', 'Position 3'],
         'state': 'stopped',
         'time_elapsed': 0,
         'turn_duration': 60,
@@ -56,11 +59,13 @@ if os.path.exists(session_file_path):
     with open(session_file_path, 'r') as file:
         session_data = yaml.safe_load(file).get('session', session)
         participants = session_data['participants']
+        positions = session_data['positions']
         state = session_data['state']
         time_elapsed = session_data['time_elapsed']
         turn_duration = session_data['turn_duration']
 else:
     participants = session['participants']
+    positions = session['positions']
     turn_duration = session.get(
         'turn_duration', config['default_turn_duration'])
     state = session.get('state', 'stopped')
@@ -71,7 +76,6 @@ timer_thread = None
 session_id = session.get(
     'session_id', f"session_{datetime.now().strftime('%Y_%m_%d')}")
 
-positions = config.get('positions', [])
 actions = config.get('actions', {})
 keymaps = config.get('keymaps', {})
 
@@ -153,6 +157,20 @@ def edit_turn_length(length):
     save_session()
 
 
+def edit_position(index, new_name):
+    global positions
+    if 0 <= index < len(positions):
+        positions[index] = new_name
+    save_session()
+
+
+def delete_position(index):
+    global positions
+    if 0 <= index < len(positions):
+        del positions[index]
+    save_session()
+
+
 def handle_input(key, stdscr):
     if key == ord(actions.get('rotate', 'r')):
         stop_timer()
@@ -179,10 +197,26 @@ def handle_input(key, stdscr):
         stdscr.refresh()
         new_duration = int(textpad_obj.edit().strip())
         edit_turn_length(new_duration)
+    elif curses.unctrl(key).startswith(b'p'):  # Handle position editing
+        num = int(curses.unctrl(key)[1]) - ord('1')
+        edit_pos_or_del(stdscr, num)
     elif key == ord('q'):
         stop_timer()
         curses.endwin()
         sys.exit()
+
+
+def edit_pos_or_del(stdscr, pos_id):
+    edit_key = stdscr.getch()
+    if edit_key == ord(actions.get('edit_position', 'e')):
+        stdscr.addstr(16, 0, f"Enter new name for position {pos_id + 1}: ")
+        textwin = curses.newwin(1, 20, 16, 35)
+        textpad_obj = textpad.Textbox(textwin)
+        stdscr.refresh()
+        new_name = textpad_obj.edit().strip()
+        edit_position(pos_id, new_name)
+    elif edit_key == ord(actions.get('delete_position', 'd')):
+        delete_position(pos_id)
 
 
 def draw_screen(stdscr):
@@ -213,7 +247,11 @@ def draw_screen(stdscr):
         stdscr.addstr(len(positions) + 10, 0,
                       f"Time Left: {max(0, turn_duration - time_elapsed)}s")
         stdscr.addstr(
-            len(positions) + 12, 0, "Press 'q' to quit, 'a' to add participant, 'd' to edit duration.")
+            len(positions) + 12, 0, "Press 'q' to quit, 'a' to add participant, 'd' to edit duration")
+        stdscr.addstr(len(positions) + 13, 0,
+                      "Use 'p1e', 'p2e', 'p3e', etc. to edit a position")
+        stdscr.addstr(len(positions) + 14, 0,
+                      "Use 'p1d', 'p2d', 'p3d', etc. to delete a position")
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 
@@ -222,6 +260,7 @@ def save_session():
     session_data = {
         'session_id': session_id,
         'participants': participants,
+        'positions': positions,
         'state': state,
         'time_elapsed': time_elapsed,
         'turn_duration': turn_duration
