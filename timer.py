@@ -68,7 +68,7 @@ if os.path.exists(session_file_path):
             'turn_duration', session['turn_duration'])
 else:
     participants = session['participants']
-    positions = session['positions']
+    positions = session.get('positions', [])
     turn_duration = session['turn_duration']
     state = session['state']
     time_elapsed = session.get('time_elapsed', 0)
@@ -199,7 +199,7 @@ def handle_input(key, stdscr):
         stdscr.refresh()
         new_duration = int(textpad_obj.edit().strip())
         edit_turn_length(new_duration)
-    elif curses.unctrl(key).startswith(b'p'):  # Handle position editing
+    elif curses.unctrl(key).startswith(b'p'):
         num = int(curses.unctrl(key)[1]) - ord('1')
         edit_pos_or_del(stdscr, num)
     elif key == ord('q'):
@@ -227,29 +227,26 @@ def draw_screen(stdscr):
         stdscr.addstr(0, 0, "Positions and Participants:")
         row = 2
         max_col_width = 20
-        # Draw positions and assign participants
         for idx, position in enumerate(positions):
             col = idx * max_col_width
             stdscr.addstr(row, col, f"{position}:")
             participant_name = participants[idx] if idx < len(
                 participants) else "(None)"
             stdscr.addstr(row + 1, col, f"  {participant_name}")
-
-        # Draw unassigned participants
         unassigned = participants[len(positions):]
         if unassigned:
             stdscr.addstr(len(positions) + 4, 0, "Unassigned Participants:")
             for idx, participant_name in enumerate(unassigned):
-                stdscr.addstr(len(positions) + 5 + idx, 0,
-                              f"  {participant_name}")
+                stdscr.addstr(len(positions) + 5 + idx,
+                              0, f"  {participant_name}")
         stdscr.addstr(len(positions) + 7, 0, f"State: {state}")
         stdscr.addstr(len(positions) + 8, 0, f"Time Elapsed: {time_elapsed}s")
         stdscr.addstr(len(positions) + 9, 0,
                       f"Turn Duration: {turn_duration}s")
         stdscr.addstr(len(positions) + 10, 0,
                       f"Time Left: {max(0, turn_duration - time_elapsed)}s")
-        stdscr.addstr(
-            len(positions) + 12, 0, "Press 'q' to quit, 'a' to add participant, 'd' to edit duration")
+        stdscr.addstr(len(positions) + 12, 0,
+                      "Press 'q' to quit, 'a' to add participant, 'd' to edit duration")
         stdscr.addstr(len(positions) + 13, 0,
                       "Use 'p1e', 'p2e', 'p3e', etc. to edit a position")
         stdscr.addstr(len(positions) + 14, 0,
