@@ -19,7 +19,8 @@ default_config = {
             'start': 's',
             'stop': 't',
             'pause': 'p',
-            'add': 'a'
+            'add': 'a',
+            'edit_duration': 'd'
         },
         'keymaps': {},
         'hooks': {},
@@ -49,11 +50,22 @@ config = config_data['config']
 session = config_data['session']
 live_view = config_data['live_view']
 
-# Global variables
-participants = session['participants']
-turn_duration = session.get('turn_duration', config['default_turn_duration'])
-state = session.get('state', 'stopped')
-time_elapsed = session.get('time_elapsed', 0)
+# Load session from file if it exists
+session_file_path = f"session_{datetime.now().strftime('%Y_%m_%d')}.yml"
+if os.path.exists(session_file_path):
+    with open(session_file_path, 'r') as file:
+        session_data = yaml.safe_load(file).get('session', session)
+        participants = session_data['participants']
+        state = session_data['state']
+        time_elapsed = session_data['time_elapsed']
+        turn_duration = session_data['turn_duration']
+else:
+    participants = session['participants']
+    turn_duration = session.get(
+        'turn_duration', config['default_turn_duration'])
+    state = session.get('state', 'stopped')
+    time_elapsed = session.get('time_elapsed', 0)
+
 timer_paused = False
 timer_thread = None
 session_id = session.get(
@@ -74,7 +86,7 @@ def run_hook(hook_name):
 
 
 def update_timer():
-    global time_elapsed, timer_paused
+    global time_elapsed, timer_paused, state
     while state == 'active':
         time.sleep(1)
         with lock:
@@ -82,8 +94,8 @@ def update_timer():
                 time_elapsed += 1
                 if time_elapsed >= turn_duration and participants:
                     run_hook('timer_expire')
+                    stop_timer()
                     rotate_participants()
-                    time_elapsed = 0
                 save_session()
 
 
@@ -155,6 +167,7 @@ def edit_turn_length(length):
 
 def handle_input(key, stdscr):
     if key == ord(actions.get('rotate', 'r')):
+        stop_timer()
         rotate_participants()
     elif key == ord(actions.get('randomize', 'x')):
         randomize_participants()
@@ -171,6 +184,13 @@ def handle_input(key, stdscr):
         stdscr.refresh()
         name = textpad_obj.edit().strip()
         add_person(name)
+    elif key == ord(actions.get('edit_duration', 'd')):
+        stdscr.addstr(14, 0, "Enter new duration: ")
+        textwin = curses.newwin(1, 5, 14, 20)
+        textpad_obj = textpad.Textbox(textwin)
+        stdscr.refresh()
+        new_duration = int(textpad_obj.edit().strip())
+        edit_turn_length(new_duration)
     elif key == ord('q'):
         stop_timer()
         curses.endwin()
@@ -194,14 +214,18 @@ def draw_screen(stdscr):
                 stdscr.addstr(row + 1, col, "  (None)")
         unassigned = [p for p in participants if p.get('position') is None]
         if unassigned:
-            stdscr.addstr(row + 4, 0, "Unassigned Participants:")
+            stdscr.addstr(len(positions) + 4, 0, "Unassigned Participants:")
             for idx, participant in enumerate(unassigned):
-                stdscr.addstr(row + 5 + idx, 0, f"  {participant['name']}")
-        stdscr.addstr(row + 7, 0, f"State: {state}")
-        stdscr.addstr(row + 8, 0, f"Time Elapsed: {time_elapsed}s")
-        stdscr.addstr(row + 9, 0, f"Turn Duration: {turn_duration}s")
+                stdscr.addstr(len(positions) + 5 + idx, 0,
+                              f"  {participant['name']}")
+        stdscr.addstr(len(positions) + 7, 0, f"State: {state}")
+        stdscr.addstr(len(positions) + 8, 0, f"Time Elapsed: {time_elapsed}s")
+        stdscr.addstr(len(positions) + 9, 0,
+                      f"Turn Duration: {turn_duration}s")
+        stdscr.addstr(len(positions) + 10, 0,
+                      f"Time Left: {max(0, turn_duration - time_elapsed)}s")
         stdscr.addstr(
-            row + 11, 0, "Press 'q' to quit, 'a' to add participant.")
+            len(positions) + 12, 0, "Press 'q' to quit, 'a' to add participant, 'd' to edit duration.")
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 
