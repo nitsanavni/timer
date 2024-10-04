@@ -21,9 +21,9 @@ default_config = {
             'pause': 'p',
             'add': 'a',
             'edit_duration': 'd',
-            'edit_position': 'e',  # Edited for single character handling in edit mode
-            'delete_position': 'd',  # Edited for single character handling in edit mode
-            'add_position': 'a'  # Adjusted for single character handling in edit mode
+            'edit_position': 'e',
+            'delete_position': 'd',
+            'add_position': 'a'
         },
         'keymaps': {},
         'hooks': {},
@@ -96,16 +96,15 @@ def run_hook(hook_name):
 
 def update_timer():
     global time_elapsed, timer_paused, state
-    while state == 'active':
+    while state == 'active' and not timer_paused:
         time.sleep(1)
         with lock:
-            if not timer_paused:
-                time_elapsed += 1
-                if time_elapsed >= turn_duration and participants:
-                    run_hook('timer_expire')
-                    stop_timer()
-                    rotate_participants()
-                save_session()
+            time_elapsed += 1
+            if time_elapsed >= turn_duration and participants:
+                run_hook('timer_expire')
+                stop_timer()
+                rotate_participants()
+            save_session()
 
 
 def rotate_participants():
@@ -123,12 +122,14 @@ def randomize_participants():
 
 
 def start_timer():
-    global state, timer_thread
+    global state, timer_thread, timer_paused
     if state != 'active':
         state = 'active'
-        timer_thread = threading.Thread(target=update_timer)
-        timer_thread.daemon = True
-        timer_thread.start()
+        timer_paused = False  # Ensure the timer is not paused
+        if not timer_thread or not timer_thread.is_alive():
+            timer_thread = threading.Thread(target=update_timer)
+            timer_thread.daemon = True
+            timer_thread.start()
         save_session()
 
 
