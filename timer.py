@@ -8,9 +8,41 @@ import sys
 from datetime import datetime
 from curses import wrapper
 
-# Load configuration
-with open('config.yml', 'r') as file:
-    config_data = yaml.safe_load(file)
+# Default configuration
+default_config = {
+    'config': {
+        'default_turn_duration': 60,
+        'positions': ['Position 1', 'Position 2', 'Position 3'],
+        'actions': {
+            'rotate': 'r',
+            'randomize': 'x',
+            'start': 's',
+            'stop': 't',
+            'pause': 'p'
+        },
+        'keymaps': {},
+        'hooks': {},
+    },
+    'session': {
+        'participants': [],
+        'state': 'stopped',
+        'time_elapsed': 0,
+        'turn_duration': 60,
+    },
+    'live_view': {
+        'update_interval': 1,
+    }
+}
+
+# Load or create configuration
+config_file_path = 'config.yml'
+if not os.path.exists(config_file_path):
+    with open(config_file_path, 'w') as file:
+        yaml.dump(default_config, file)
+        config_data = default_config
+else:
+    with open(config_file_path, 'r') as file:
+        config_data = yaml.safe_load(file)
 
 config = config_data['config']
 session = config_data['session']
@@ -152,14 +184,12 @@ def handle_input(key):
 def draw_screen(stdscr):
     while True:
         stdscr.clear()
-        # Display positions as static headers
         stdscr.addstr(0, 0, "Positions and Participants:")
         row = 2
         max_col_width = 20  # Adjust as needed for spacing
         for idx, position in enumerate(positions):
             col = idx * max_col_width
             stdscr.addstr(row, col, f"{position}:")
-            # Find participant assigned to this position
             participant = next(
                 (p for p in participants if p.get('position') == position), None)
             if participant:
@@ -169,13 +199,11 @@ def draw_screen(stdscr):
                 stdscr.addstr(row + 2, col, f"  Time Left: {time_remaining}s")
             else:
                 stdscr.addstr(row + 1, col, "  (None)")
-        # Display participants without positions
         unassigned = [p for p in participants if p.get('position') is None]
         if unassigned:
             stdscr.addstr(row + 4, 0, "Unassigned Participants:")
             for idx, participant in enumerate(unassigned):
                 stdscr.addstr(row + 5 + idx, 0, f"  {participant['name']}")
-        # Display timer and state
         stdscr.addstr(row + 7, 0, f"State: {state}")
         stdscr.addstr(row + 8, 0, f"Time Elapsed: {time_elapsed}s")
         stdscr.addstr(row + 10, 0, "Press 'q' to quit.")
