@@ -1,0 +1,21 @@
+config:
+  actions:
+    pause: p
+    randomize: x
+    rotate: r
+    start: s
+    stop: t
+  default_turn_duration: 60
+  hooks: {}
+  keymaps: {}
+  positions:
+  - Position 1
+  - Position 2
+  - Position 3
+live_view:
+  update_interval: 1
+session:
+  participants: []
+  state: stopped
+  time_elapsed: 0
+  turn_duration: 60
