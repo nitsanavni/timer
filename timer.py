@@ -22,7 +22,8 @@ default_config = {
             'add': 'a',
             'edit_duration': 'd',
             'edit_position': 'e',
-            'delete_position': 'd'
+            'delete_position': 'd',
+            'add_position': 'pa'  # Added action for adding a position
         },
         'keymaps': {},
         'hooks': {},
@@ -173,6 +174,12 @@ def delete_position(index):
     save_session()
 
 
+def add_position(name):
+    global positions
+    positions.append(name)
+    save_session()
+
+
 def handle_input(key, stdscr):
     if key == ord(actions.get('rotate', 'r')):
         stop_timer()
@@ -202,6 +209,13 @@ def handle_input(key, stdscr):
     elif curses.unctrl(key).startswith(b'p'):
         num = int(curses.unctrl(key)[1]) - ord('1')
         edit_pos_or_del(stdscr, num)
+    elif key == ord(actions.get('add_position', 'pa')):
+        stdscr.addstr(15, 0, "Enter new position name: ")
+        textwin = curses.newwin(1, 20, 15, 25)
+        textpad_obj = textpad.Textbox(textwin)
+        stdscr.refresh()
+        new_position_name = textpad_obj.edit().strip()
+        add_position(new_position_name)
     elif key == ord('q'):
         stop_timer()
         curses.endwin()
@@ -251,6 +265,8 @@ def draw_screen(stdscr):
                       "Use 'p1e', 'p2e', 'p3e', etc. to edit a position")
         stdscr.addstr(len(positions) + 14, 0,
                       "Use 'p1d', 'p2d', 'p3d', etc. to delete a position")
+        stdscr.addstr(len(positions) + 15, 0,
+                      "Press 'pa' to add a new position")
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 
