@@ -21,9 +21,9 @@ default_config = {
             'pause': 'p',
             'add': 'a',
             'edit_duration': 'd',
-            'edit_position': 'e',
-            'delete_position': 'd',
-            'add_position': 'pa'  # Added action for adding a position
+            'edit_position': 'e',  # Edited for single character handling in edit mode
+            'delete_position': 'd',  # Edited for single character handling in edit mode
+            'add_position': 'a'  # Adjusted for single character handling in edit mode
         },
         'keymaps': {},
         'hooks': {},
@@ -84,6 +84,8 @@ keymaps = config.get('keymaps', {})
 
 # Lock for thread safety
 lock = threading.Lock()
+position_edit_mode = False
+selected_position_index = -1
 
 
 def run_hook(hook_name):
@@ -181,58 +183,61 @@ def add_position(name):
 
 
 def handle_input(key, stdscr):
-    if key == ord(actions.get('rotate', 'r')):
-        stop_timer()
-        rotate_participants()
-    elif key == ord(actions.get('randomize', 'x')):
-        randomize_participants()
-    elif key == ord(actions.get('start', 's')):
-        start_timer()
-    elif key == ord(actions.get('stop', 't')):
-        stop_timer()
-    elif key == ord(actions.get('pause', 'p')):
-        pause_timer()
-    elif key == ord(actions.get('add', 'a')):
-        stdscr.addstr(12, 0, "Enter name: ")
-        textwin = curses.newwin(1, 20, 12, 12)
-        textpad_obj = textpad.Textbox(textwin)
-        stdscr.refresh()
-        name = textpad_obj.edit().strip()
-        add_person(name)
-    elif key == ord(actions.get('edit_duration', 'd')):
-        stdscr.addstr(14, 0, "Enter new duration: ")
-        textwin = curses.newwin(1, 5, 14, 20)
-        textpad_obj = textpad.Textbox(textwin)
-        stdscr.refresh()
-        new_duration = int(textpad_obj.edit().strip())
-        edit_turn_length(new_duration)
-    elif curses.unctrl(key).startswith(b'p'):
-        num = int(curses.unctrl(key)[1]) - ord('1')
-        edit_pos_or_del(stdscr, num)
-    elif key == ord(actions.get('add_position', 'pa')):
-        stdscr.addstr(15, 0, "Enter new position name: ")
-        textwin = curses.newwin(1, 20, 15, 25)
-        textpad_obj = textpad.Textbox(textwin)
-        stdscr.refresh()
-        new_position_name = textpad_obj.edit().strip()
-        add_position(new_position_name)
-    elif key == ord('q'):
-        stop_timer()
-        curses.endwin()
-        sys.exit()
+    global position_edit_mode, selected_position_index
 
+    if key == ord('p'):
+        position_edit_mode = not position_edit_mode
 
-def edit_pos_or_del(stdscr, pos_id):
-    edit_key = stdscr.getch()
-    if edit_key == ord(actions.get('edit_position', 'e')):
-        stdscr.addstr(16, 0, f"Enter new name for position {pos_id + 1}: ")
-        textwin = curses.newwin(1, 20, 16, 35)
-        textpad_obj = textpad.Textbox(textwin)
-        stdscr.refresh()
-        new_name = textpad_obj.edit().strip()
-        edit_position(pos_id, new_name)
-    elif edit_key == ord(actions.get('delete_position', 'd')):
-        delete_position(pos_id)
+    if not position_edit_mode:
+        if key == ord(actions.get('rotate', 'r')):
+            stop_timer()
+            rotate_participants()
+        elif key == ord(actions.get('randomize', 'x')):
+            randomize_participants()
+        elif key == ord(actions.get('start', 's')):
+            start_timer()
+        elif key == ord(actions.get('stop', 't')):
+            stop_timer()
+        elif key == ord(actions.get('pause', 'p')):
+            pause_timer()
+        elif key == ord(actions.get('add', 'a')):
+            stdscr.addstr(12, 0, "Enter name: ")
+            textwin = curses.newwin(1, 20, 12, 12)
+            textpad_obj = textpad.Textbox(textwin)
+            stdscr.refresh()
+            name = textpad_obj.edit().strip()
+            add_person(name)
+        elif key == ord(actions.get('edit_duration', 'd')):
+            stdscr.addstr(14, 0, "Enter new duration: ")
+            textwin = curses.newwin(1, 5, 14, 20)
+            textpad_obj = textpad.Textbox(textwin)
+            stdscr.refresh()
+            new_duration = int(textpad_obj.edit().strip())
+            edit_turn_length(new_duration)
+        elif key == ord('q'):
+            stop_timer()
+            curses.endwin()
+            sys.exit()
+    else:
+        if key >= ord('1') and key <= ord('9'):
+            selected_position_index = key - ord('1')
+        elif key == ord('a'):
+            stdscr.addstr(15, 0, "Enter new position name: ")
+            textwin = curses.newwin(1, 20, 15, 25)
+            textpad_obj = textpad.Textbox(textwin)
+            stdscr.refresh()
+            new_position_name = textpad_obj.edit().strip()
+            add_position(new_position_name)
+        elif key == ord('e') and selected_position_index != -1:
+            stdscr.addstr(
+                16, 0, f"Enter new name for position {selected_position_index + 1}: ")
+            textwin = curses.newwin(1, 20, 16, 35)
+            textpad_obj = textpad.Textbox(textwin)
+            stdscr.refresh()
+            new_name = textpad_obj.edit().strip()
+            edit_position(selected_position_index, new_name)
+        elif key == ord('d') and selected_position_index != -1:
+            delete_position(selected_position_index)
 
 
 def draw_screen(stdscr):
@@ -262,11 +267,13 @@ def draw_screen(stdscr):
         stdscr.addstr(len(positions) + 12, 0,
                       "Press 'q' to quit, 'a' to add participant, 'd' to edit duration")
         stdscr.addstr(len(positions) + 13, 0,
-                      "Use 'p1e', 'p2e', 'p3e', etc. to edit a position")
-        stdscr.addstr(len(positions) + 14, 0,
-                      "Use 'p1d', 'p2d', 'p3d', etc. to delete a position")
-        stdscr.addstr(len(positions) + 15, 0,
-                      "Press 'pa' to add a new position")
+                      "Press 'p' to toggle position edit mode")
+        if position_edit_mode:
+            stdscr.addstr(len(positions) + 14, 0, "Position Edit Mode: On")
+            stdscr.addstr(len(positions) + 15, 0,
+                          "Use '1', '2', ... to select, 'a' to add, 'e' to edit, 'd' to delete")
+        else:
+            stdscr.addstr(len(positions) + 14, 0, "Position Edit Mode: Off")
         stdscr.refresh()
         time.sleep(live_view['update_interval'])
 
