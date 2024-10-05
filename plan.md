@@ -1,3 +1,5 @@
+- clean up the UI
+  - compact keymap legend
 - in position/participant edit mode, show the name next to number, don't show 'q'
 - cant see the input field
 - graphical design, colors
