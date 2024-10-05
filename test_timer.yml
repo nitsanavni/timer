@@ -1,0 +1,8 @@
+name: Test Timer Basic Operations
+base_cmd: python3 ./timer.py
+story:
+  - wait-for-output: "State: stopped"
+  - capture: initial
+  - send: s  # Start the timer
+  - wait-for-output: "State: active"
+  - capture: active

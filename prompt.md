@@ -1,6 +1,5 @@
 @./timer.py
+@../tmux-story/README.md
+@../tmux-story/src/dsl2bash.py
 
-let's do the same for participants too
-participants_edit_mode
-
-then we can add, remove, rename
+let's write a test for timer.py using tmux-story
